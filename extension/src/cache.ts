@@ -1,13 +1,12 @@
 // ============================================================
 // cache.ts — Cache local des réponses LLM (7 jours, par script)
 // ============================================================
-// Clé = SHA-256(snapshot + scriptId + modes + language)
-// Stocké dans chrome.storage.local sous "explain_cache"
+// content.ts tourne dans le monde MAIN → pas d'accès à chrome.storage.
+// Les lectures/écritures sont routées via bridge.ts par postMessage.
 // ============================================================
 
 import type { ExplainResponse } from "scratch-explainer-shared";
 
-const CACHE_KEY = "explain_cache";
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface CacheEntry {
@@ -24,6 +23,19 @@ async function fingerprint(snapshot: string, scriptId: string, modes: string[], 
     .slice(0, 16);
 }
 
+function getBridgeEntry(key: string): Promise<CacheEntry | null> {
+  return new Promise((resolve) => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type !== "SCRATCH_EXPLAINER_CACHE_RESULT") return;
+      if (event.data.key !== key) return;
+      window.removeEventListener("message", handler);
+      resolve(event.data.entry ?? null);
+    };
+    window.addEventListener("message", handler);
+    window.postMessage({ type: "SCRATCH_EXPLAINER_GET_CACHE", key }, "*");
+  });
+}
+
 export async function getCached(
   snapshot: string,
   scriptId: string,
@@ -31,9 +43,7 @@ export async function getCached(
   language: string
 ): Promise<ExplainResponse | null> {
   const key = await fingerprint(snapshot, scriptId, modes, language);
-  const result = await chrome.storage.local.get(CACHE_KEY);
-  const cache: Record<string, CacheEntry> = result[CACHE_KEY] ?? {};
-  const entry = cache[key];
+  const entry = await getBridgeEntry(key);
   if (!entry) return null;
   if (Date.now() - entry.timestamp > SEVEN_DAYS_MS) return null;
   return entry.response;
@@ -47,14 +57,6 @@ export async function setCached(
   response: ExplainResponse
 ): Promise<void> {
   const key = await fingerprint(snapshot, scriptId, modes, language);
-  const result = await chrome.storage.local.get(CACHE_KEY);
-  const cache: Record<string, CacheEntry> = result[CACHE_KEY] ?? {};
-
-  // Purge les entrées expirées
-  for (const k of Object.keys(cache)) {
-    if (Date.now() - cache[k].timestamp > SEVEN_DAYS_MS) delete cache[k];
-  }
-
-  cache[key] = { response, timestamp: Date.now() };
-  await chrome.storage.local.set({ [CACHE_KEY]: cache });
+  const entry: CacheEntry = { response, timestamp: Date.now() };
+  window.postMessage({ type: "SCRATCH_EXPLAINER_SET_CACHE", key, entry }, "*");
 }
