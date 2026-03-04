@@ -1,0 +1,48 @@
+# ============================================================
+# deploy.yml — GitHub Actions : déploiement automatique du Worker
+# ============================================================
+# Se déclenche à chaque push sur main dans le dossier worker/
+# Déploie sur Cloudflare via wrangler.
+#
+# SECRETS À CONFIGURER sur GitHub (Settings > Secrets > Actions) :
+#   CF_API_TOKEN       — token Cloudflare avec permission Workers:Edit
+#   CF_ACCOUNT_ID      — ton Account ID Cloudflare
+# ============================================================
+
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - "shared/**"
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare Workers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check worker
+        run: npm run typecheck --workspace=worker
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy --env production

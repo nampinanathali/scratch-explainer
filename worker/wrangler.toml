@@ -1,0 +1,20 @@
+name = "scratch-explainer-worker"
+main = "src/index.ts"
+compatibility_date = "2024-03-01"
+
+# Variables NON-secrètes (ok dans ce fichier)
+[vars]
+MAX_PAYLOAD_BYTES = "500000"
+RATE_LIMIT_RPM = "30"
+
+# Variables SECRÈTES => NE PAS METTRE ICI
+# Utiliser : wrangler secret put ANTHROPIC_API_KEY
+# Ou pour le dev local : créer worker/.dev.vars (dans .gitignore)
+#
+# Secrets attendus :
+#   OPENAI_API_KEY      — clé OpenAI API (platform.openai.com)
+#   CLIENT_TOKEN        — token partagé avec l'extension (auth simple)
+
+# Environnement de production
+[env.production]
+name = "scratch-explainer-worker-prod"

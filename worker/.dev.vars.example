@@ -1,0 +1,4 @@
+# Copier ce fichier en .dev.vars (jamais committer .dev.vars)
+# Ces variables sont utilisées par `wrangler dev` en local.
+OPENAI_API_KEY=sk-...
+CLIENT_TOKEN=dev-token-change-me

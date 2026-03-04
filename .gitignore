@@ -1,0 +1,24 @@
+# Dépendances
+node_modules/
+
+# Builds
+dist/
+extension/dist/
+
+# Cloudflare / Wrangler
+.wrangler/
+worker/.dev.vars
+
+# Variables d'environnement (NE JAMAIS COMMITTER)
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editeurs
+.vscode/
+.idea/
+*.swp

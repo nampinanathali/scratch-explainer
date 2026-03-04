@@ -1,0 +1,11 @@
+{
+  "name": "scratch-explainer",
+  "private": true,
+  "workspaces": ["shared", "extension", "worker"],
+  "scripts": {
+    "build:extension": "npm run build --workspace=extension",
+    "build:worker": "npm run build --workspace=worker",
+    "dev:worker": "npm run dev --workspace=worker",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
