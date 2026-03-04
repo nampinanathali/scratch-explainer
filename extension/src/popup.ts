@@ -9,7 +9,6 @@
 export interface Settings {
   token: string;
   workerUrl: string;
-  language: "fr" | "en";
   modes: ("beginner" | "advanced")[];
   mockMode: boolean;
 }
@@ -27,24 +26,19 @@ async function load(): Promise<void> {
 
   getEl<HTMLInputElement>("token").value = s.token ?? "";
   getEl<HTMLInputElement>("workerUrl").value = s.workerUrl ?? DEFAULT_WORKER_URL;
-  getEl<HTMLSelectElement>("language").value = s.language ?? "fr";
-  getEl<HTMLInputElement>("modeBeginner").checked =
-    s.modes ? s.modes.includes("beginner") : true;
-  getEl<HTMLInputElement>("modeAdvanced").checked =
-    s.modes ? s.modes.includes("advanced") : false;
+  const mode = s.modes?.[0] ?? "beginner";
+  getEl<HTMLInputElement>("modeBeginner").checked = mode === "beginner";
+  getEl<HTMLInputElement>("modeAdvanced").checked = mode === "advanced";
   getEl<HTMLInputElement>("mockMode").checked = s.mockMode ?? false;
 }
 
 async function save(): Promise<void> {
-  const modes: Settings["modes"] = [];
-  if (getEl<HTMLInputElement>("modeBeginner").checked) modes.push("beginner");
-  if (getEl<HTMLInputElement>("modeAdvanced").checked) modes.push("advanced");
+  const modeValue = getEl<HTMLInputElement>("modeAdvanced").checked ? "advanced" : "beginner";
 
   const settings: Settings = {
     token:     getEl<HTMLInputElement>("token").value.trim(),
     workerUrl: getEl<HTMLInputElement>("workerUrl").value.trim() || DEFAULT_WORKER_URL,
-    language:  getEl<HTMLSelectElement>("language").value as Settings["language"],
-    modes:     modes.length > 0 ? modes : ["beginner"],
+    modes:     [modeValue],
     mockMode:  getEl<HTMLInputElement>("mockMode").checked,
   };
 

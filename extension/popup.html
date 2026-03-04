@@ -76,16 +76,10 @@
   <label for="workerUrl">URL du Worker</label>
   <input type="text" id="workerUrl" placeholder="https://...workers.dev">
 
-  <label for="language">Langue</label>
-  <select id="language">
-    <option value="fr">Français</option>
-    <option value="en">English</option>
-  </select>
-
-  <label>Mode d'explication</label>
+<label>Mode d'explication</label>
   <div class="row">
-    <label><input type="checkbox" id="modeBeginner" checked> Débutant</label>
-    <label><input type="checkbox" id="modeAdvanced"> Avancé</label>
+    <label><input type="radio" name="mode" id="modeBeginner" value="beginner" checked> Débutant</label>
+    <label><input type="radio" name="mode" id="modeAdvanced" value="advanced"> Avancé</label>
   </div>
 
   <label><input type="checkbox" id="mockMode"> Mode mock (test sans OpenAI)</label>

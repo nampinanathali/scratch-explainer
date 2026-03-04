@@ -75,17 +75,36 @@ export default {
     let rawJson: string;
 
     if (request.headers.get("X-Mock") === "true") {
-      rawJson = JSON.stringify({
+      const mockData: Record<string, unknown> = {
         script_id: body.script_target.script_id,
-        beginner: {
-          summary: "[MOCK] Ce script fait bouger le sprite de 10 pas.",
-          walkthrough: [{ step: 1, what: "Le sprite avance de 10 pas.", blocks: ["motion_movesteps"] }],
-          vocabulary: [{ term: "pas", definition: "Unité de distance dans Scratch." }],
-        },
-        risks: [],
-        improvements: [],
+        risks: [{ type: "logic", severity: "low", detail: "[MOCK] Aucun risque detecte." }],
+        improvements: [{ goal: "readability", suggestion: "[MOCK] Le script est lisible." }],
         unknowns: [],
-      });
+      };
+      if (body.modes?.includes("beginner")) {
+        mockData.beginner = {
+          summary: "[MOCK] Ce script fait bouger le sprite de 10 pas quand on clique sur le drapeau vert.",
+          walkthrough: [
+            { step: 1, what: "Quand le drapeau vert est clique, le script demarre.", blocks: ["event_whenflagclicked"] },
+            { step: 2, what: "Le sprite avance de 10 pas vers la droite.", blocks: ["motion_movesteps"] },
+          ],
+          vocabulary: [
+            { term: "drapeau vert", definition: "Le bouton qui lance le projet Scratch." },
+            { term: "pas", definition: "Unite de distance dans Scratch (1 pas = 1 pixel)." },
+          ],
+        };
+      }
+      if (body.modes?.includes("advanced")) {
+        mockData.advanced = {
+          summary: "[MOCK] Script evenementiel : declenchement par flag, translation lineaire du sprite.",
+          control_flow: "Declenchement unique sur event_whenflagclicked. Pas de boucle.",
+          state_changes: "Position X du sprite incrementee de 10 unites.",
+          event_dependencies: "Depend de event_whenflagclicked. Aucune dependance inter-sprites detectee.",
+          timing_notes: "Execution instantanee (1 frame a 30 FPS).",
+          performance_notes: "Script minimal, aucun impact performance.",
+        };
+      }
+      rawJson = JSON.stringify(mockData);
     } else {
       const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
       try {

@@ -64,7 +64,6 @@ SCRATCH ENGINE CONSTRAINTS TO APPLY WHEN RELEVANT:
  */
 export function buildUserMessage(request: ExplainRequest): string {
   const modesLabel = request.modes.join(" and ");
-  const lang = request.language === "fr" ? "French" : "English";
 
   return `
 PROJECT SNAPSHOT:
@@ -79,7 +78,7 @@ Script ID: ${request.script_target.script_id}
 INSTRUCTIONS:
 - Explain the script above using the context from the full snapshot.
 - Provide explanations for: ${modesLabel}
-- Language: ${lang}
+- Language: write ALL text fields in the language with BCP 47 code "${request.language}" (examples: "fr"=French, "en"=English, "de"=German, "es"=Spanish, "ja"=Japanese). Do NOT translate opcode names or script IDs.
 - Return ONLY the JSON object described in the system prompt.
 `.trim();
 }

@@ -54,6 +54,10 @@ interface ScratchBlock {
   inputs: Record<string, ScratchBlockInput>;
   fields: Record<string, ScratchBlockField>;
   shadow: boolean;
+  // Présent sur procedures_call, procedures_definition, procedures_prototype
+  mutation?: {
+    proccode?: string;  // ex: "MonBloc %s %b" — nom + types des paramètres
+  };
 }
 
 // ─── Accès à la VM via React fiber ───────────────────────────
@@ -145,6 +149,26 @@ function serializeBlock(
 ): string[] {
   const pad = "  ".repeat(indent);
   const lines: string[] = [];
+
+  // Custom blocks : le nom est dans mutation.proccode (ex: "MonBloc %s %b")
+  // On remplace l'opcode générique "procedures_call" par le vrai nom
+  if (
+    (block.opcode === "procedures_call" || block.opcode === "procedures_definition") &&
+    block.mutation?.proccode
+  ) {
+    const label = block.opcode === "procedures_call" ? "CALL" : "DEFINE";
+    lines.push(`${pad}- ${label} custom_block[${block.mutation.proccode}]`);
+    // Les substacks sont gérés plus bas (pour procedures_definition avec corps)
+    for (let i = 1; ; i++) {
+      const key = i === 1 ? "SUBSTACK" : `SUBSTACK${i}`;
+      const subInput = block.inputs[key];
+      if (!subInput) break;
+      if (subInput.block && blocks[subInput.block]) {
+        lines.push(...serializeSequence(subInput.block, blocks, indent + 1));
+      }
+    }
+    return lines;
+  }
 
   // Valeurs statiques du bloc (nom de variable, option choisie…)
   const fieldParts = Object.values(block.fields)
@@ -282,6 +306,31 @@ export function extractSnapshot(rootBlockId: string): SnapshotResult {
       .map((v) => `${v.name}[${(v.value as unknown[]).length} items]`);
     if (gLists.length) lines.push(`GLOBAL LISTS: ${gLists.join(", ")}`);
   }
+
+  // Broadcasts : collecte tous les noms de messages dans tout le projet
+  const broadcastNames = new Set<string>();
+  for (const target of targets) {
+    for (const block of Object.values(target.blocks._blocks)) {
+      // Hat "when I receive X" → champ BROADCAST_OPTION
+      if (block.opcode === "event_whenbroadcastreceived") {
+        const val = block.fields["BROADCAST_OPTION"]?.value;
+        if (val) broadcastNames.add(val);
+      }
+      // Bloc "broadcast X" ou "broadcast X and wait" → input → shadow → champ
+      if (block.opcode === "event_broadcast" || block.opcode === "event_broadcastandwait") {
+        const inputRef = block.inputs["BROADCAST_INPUT"];
+        if (inputRef?.shadow) {
+          const shadow = target.blocks._blocks[inputRef.shadow];
+          const val = shadow?.fields["BROADCAST_OPTION"]?.value;
+          if (val) broadcastNames.add(val);
+        }
+      }
+    }
+  }
+  if (broadcastNames.size > 0) {
+    lines.push(`BROADCASTS: ${[...broadcastNames].join(", ")}`);
+  }
+
   lines.push("");
 
   // Identifier quel sprite contient le script cible

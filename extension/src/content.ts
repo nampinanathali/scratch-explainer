@@ -17,6 +17,7 @@
 import { extractSnapshot, fetchProjectMeta } from "./snapshot";
 import type { Settings } from "./popup";
 import type { ExplainRequest, ExplainResponse, ErrorResponse } from "scratch-explainer-shared";
+import { renderPanel, showLoadingPanel, showErrorPanel } from "./ui";
 
 // Demande les réglages à bridge.ts via postMessage (bridge a accès à chrome.storage)
 function getSettings(): Promise<Partial<Settings>> {
@@ -214,17 +215,22 @@ async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
     const workerUrl = (settings.workerUrl ?? "").replace(/\/$/, "");
 
     if (!token || !workerUrl) {
-      alert("Configure d'abord l'extension : clique sur l'icône dans la barre Chrome.");
+      showErrorPanel("Configure d'abord l'extension : clique sur l'icone dans la barre Chrome.");
       return;
     }
 
     // Construire la requête à envoyer au worker
+    // Langue du navigateur (ex: "fr-FR" → "fr", "en-US" → "en", "de" → "de")
+    const browserLang = navigator.language?.split("-")[0] ?? "fr";
+
     const payload: ExplainRequest = {
       project_snapshot: fullSnapshot,
       script_target: { sprite: spriteName, script_id: scriptId },
       modes: settings.modes ?? ["beginner"],
-      language: settings.language ?? "fr",
+      language: browserLang,
     };
+
+    showLoadingPanel();
 
     console.log("[ScratchExplainer] Envoi au worker...");
     const headers: Record<string, string> = {
@@ -248,11 +254,10 @@ async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
 
     const explanation = json as ExplainResponse;
     console.log("[ScratchExplainer] Réponse reçue ✓", explanation);
-    // MILESTONE 5 : afficher explanation dans le panneau UI
-    alert(`Explication reçue pour ${scriptId} !\nVois la console pour le détail.`);
+    renderPanel(explanation);
   } catch (err) {
     console.error("[ScratchExplainer] Erreur snapshot :", err);
-    alert("Erreur lors de l'extraction. Vois la console.");
+    showErrorPanel("Erreur lors de l'extraction. Vois la console (F12).");
   }
 }
 
