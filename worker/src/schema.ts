@@ -43,7 +43,7 @@ const RiskSchema = z.object({
 });
 
 const ImprovementSchema = z.object({
-  goal: z.enum(["readability", "robustness", "performance"]),
+  goal: z.string(),
   suggestion: z.string(),
 });
 

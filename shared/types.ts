@@ -53,7 +53,7 @@ export interface AdvancedExplanation {
 
 export type RiskType = "logic" | "performance" | "state" | "event" | "ui";
 export type Severity = "low" | "medium" | "high";
-export type ImprovementGoal = "readability" | "robustness" | "performance";
+export type ImprovementGoal = string;
 
 export interface Risk {
   type: RiskType;
