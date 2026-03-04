@@ -209,7 +209,7 @@ function serializeSequence(
   const lines: string[] = [];
   let id: string | null = startId;
   while (id && blocks[id]) {
-    const block = blocks[id];
+    const block: ScratchBlock = blocks[id];
     if (!block.shadow) lines.push(...serializeBlock(block, blocks, indent));
     id = block.next;
   }
