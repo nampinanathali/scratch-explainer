@@ -23,7 +23,7 @@ export default {
     // CORS pour le développement local (l'extension envoie depuis chrome-extension://)
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, X-Client-Token",
+      "Access-Control-Allow-Headers": "Content-Type, X-Client-Token, X-Mock",
     };
 
     if (request.method === "OPTIONS") {
@@ -71,26 +71,40 @@ export default {
       return jsonError("RATE_LIMITED", "Trop de requêtes. Réessaie dans une minute.", 429);
     }
 
-    // 6. Appel LLM
-    const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-
+    // 6. Appel LLM (ou mock si header X-Mock: true)
     let rawJson: string;
-    try {
-      const completion = await client.chat.completions.create({
-        model: "gpt-4o",
-        max_tokens: 4096,
-        response_format: { type: "json_object" }, // force JSON natif OpenAI
-        messages: [
-          { role: "system", content: buildSystemPrompt() },
-          { role: "user", content: buildUserMessage(body) },
-        ],
-      });
 
-      const content = completion.choices[0]?.message?.content;
-      if (!content) throw new Error("Réponse OpenAI vide");
-      rawJson = content;
-    } catch (e) {
-      return jsonError("LLM_ERROR", `Erreur OpenAI API : ${(e as Error).message}`, 502);
+    if (request.headers.get("X-Mock") === "true") {
+      rawJson = JSON.stringify({
+        script_id: body.script_target.script_id,
+        beginner: {
+          summary: "[MOCK] Ce script fait bouger le sprite de 10 pas.",
+          walkthrough: [{ step: 1, what: "Le sprite avance de 10 pas.", blocks: ["motion_movesteps"] }],
+          vocabulary: [{ term: "pas", definition: "Unité de distance dans Scratch." }],
+        },
+        risks: [],
+        improvements: [],
+        unknowns: [],
+      });
+    } else {
+      const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+      try {
+        const completion = await client.chat.completions.create({
+          model: "gpt-4o",
+          max_tokens: 4096,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: buildSystemPrompt() },
+            { role: "user", content: buildUserMessage(body) },
+          ],
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        if (!content) throw new Error("Réponse OpenAI vide");
+        rawJson = content;
+      } catch (e) {
+        return jsonError("LLM_ERROR", `Erreur OpenAI API : ${(e as Error).message}`, 502);
+      }
     }
 
     // 7. Validation schéma JSON de sortie

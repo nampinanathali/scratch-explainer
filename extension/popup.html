@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      color: #575E75;
+      background: #F9F9F9;
+      padding: 16px;
+      width: 280px;
+      margin: 0;
+    }
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4C97FF;
+      margin: 0 0 14px 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    input, select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #E0E0E0;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 13px;
+      color: #575E75;
+      background: white;
+      margin-bottom: 12px;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .row label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0;
+      font-weight: normal;
+      cursor: pointer;
+    }
+    button {
+      width: 100%;
+      background: #4C97FF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button:hover { background: #3d88f0; }
+    #status {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 12px;
+      color: #59C059;
+      min-height: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Scratch Script Explainer</h1>
+
+  <label for="token">Client Token</label>
+  <input type="password" id="token" placeholder="Ton token secret...">
+
+  <label for="workerUrl">URL du Worker</label>
+  <input type="text" id="workerUrl" placeholder="https://...workers.dev">
+
+  <label for="language">Langue</label>
+  <select id="language">
+    <option value="fr">Français</option>
+    <option value="en">English</option>
+  </select>
+
+  <label>Mode d'explication</label>
+  <div class="row">
+    <label><input type="checkbox" id="modeBeginner" checked> Débutant</label>
+    <label><input type="checkbox" id="modeAdvanced"> Avancé</label>
+  </div>
+
+  <label><input type="checkbox" id="mockMode"> Mode mock (test sans OpenAI)</label>
+  <br>
+
+  <button id="save">Enregistrer</button>
+  <div id="status"></div>
+
+  <script src="dist/popup.js"></script>
+</body>
+</html>

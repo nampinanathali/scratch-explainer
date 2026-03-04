@@ -4,6 +4,11 @@
   "version": "0.1.0",
   "description": "Explique les scripts Scratch avec l'IA (mode débutant et avancé)",
 
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Scratch Script Explainer"
+  },
+
   "permissions": [
     "storage",
     "activeTab"
@@ -19,6 +24,11 @@
       "js": ["dist/content.js"],
       "run_at": "document_idle",
       "world": "MAIN"
+    },
+    {
+      "matches": ["https://scratch.mit.edu/projects/*"],
+      "js": ["dist/bridge.js"],
+      "run_at": "document_idle"
     }
   ],
 

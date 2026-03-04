@@ -51,9 +51,9 @@ const ExplainResponseSchema = z.object({
   script_id: z.string(),
   beginner: BeginnerSchema.optional(),
   advanced: AdvancedSchema.optional(),
-  risks: z.array(RiskSchema),
-  improvements: z.array(ImprovementSchema),
-  unknowns: z.array(z.string()),
+  risks: z.array(RiskSchema).default([]),
+  improvements: z.array(ImprovementSchema).default([]),
+  unknowns: z.array(z.string()).default([]),
 });
 
 // --- Résultat de validation ---

@@ -15,6 +15,21 @@
 // ============================================================
 
 import { extractSnapshot, fetchProjectMeta } from "./snapshot";
+import type { Settings } from "./popup";
+import type { ExplainRequest, ExplainResponse, ErrorResponse } from "scratch-explainer-shared";
+
+// Demande les réglages à bridge.ts via postMessage (bridge a accès à chrome.storage)
+function getSettings(): Promise<Partial<Settings>> {
+  return new Promise((resolve) => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type !== "SCRATCH_EXPLAINER_SETTINGS") return;
+      window.removeEventListener("message", handler);
+      resolve(event.data.settings ?? {});
+    };
+    window.addEventListener("message", handler);
+    window.postMessage({ type: "SCRATCH_EXPLAINER_GET_SETTINGS" }, "*");
+  });
+}
 
 console.log("[ScratchExplainer] Extension chargée ✓");
 
@@ -191,9 +206,50 @@ async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
     console.log("[ScratchExplainer] Snapshot extrait ✓");
     console.log("  → Sprite    :", spriteName);
     console.log("  → Script ID :", scriptId);
-    console.log("  → Snapshot  :\n" + fullSnapshot);
-    // MILESTONE 4 : ici on enverra fullSnapshot au Worker Cloudflare
-    alert(`Snapshot extrait : ${scriptId}\nVois la console pour le détail.`);
+
+    // Lire les réglages via bridge.ts (qui a accès à chrome.storage)
+    const settings = await getSettings();
+
+    const token = settings.token ?? "";
+    const workerUrl = (settings.workerUrl ?? "").replace(/\/$/, "");
+
+    if (!token || !workerUrl) {
+      alert("Configure d'abord l'extension : clique sur l'icône dans la barre Chrome.");
+      return;
+    }
+
+    // Construire la requête à envoyer au worker
+    const payload: ExplainRequest = {
+      project_snapshot: fullSnapshot,
+      script_target: { sprite: spriteName, script_id: scriptId },
+      modes: settings.modes ?? ["beginner"],
+      language: settings.language ?? "fr",
+    };
+
+    console.log("[ScratchExplainer] Envoi au worker...");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Client-Token": token,
+    };
+    if (settings.mockMode) headers["X-Mock"] = "true";
+
+    const resp = await fetch(`${workerUrl}/explain`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const json = await resp.json() as ExplainResponse | ErrorResponse;
+
+    if (!resp.ok) {
+      const err = json as ErrorResponse;
+      throw new Error(`Worker error ${err.error}: ${err.message}`);
+    }
+
+    const explanation = json as ExplainResponse;
+    console.log("[ScratchExplainer] Réponse reçue ✓", explanation);
+    // MILESTONE 5 : afficher explanation dans le panneau UI
+    alert(`Explication reçue pour ${scriptId} !\nVois la console pour le détail.`);
   } catch (err) {
     console.error("[ScratchExplainer] Erreur snapshot :", err);
     alert("Erreur lors de l'extraction. Vois la console.");

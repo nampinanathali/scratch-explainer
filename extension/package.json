@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "esbuild src/content.ts --bundle --outfile=dist/content.js --platform=browser --target=chrome120",
+    "build": "esbuild src/content.ts --bundle --outfile=dist/content.js --platform=browser --target=chrome120 && esbuild src/popup.ts --bundle --outfile=dist/popup.js --platform=browser --target=chrome120 && esbuild src/bridge.ts --bundle --outfile=dist/bridge.js --platform=browser --target=chrome120",
     "watch": "esbuild src/content.ts --bundle --outfile=dist/content.js --platform=browser --target=chrome120 --watch",
     "typecheck": "tsc --noEmit"
   },
