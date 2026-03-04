@@ -15,7 +15,7 @@
 
   "content_scripts": [
     {
-      "matches": ["https://scratch.mit.edu/projects/*/editor*"],
+      "matches": ["https://scratch.mit.edu/projects/*"],
       "js": ["dist/content.js"],
       "run_at": "document_idle",
       "world": "MAIN"

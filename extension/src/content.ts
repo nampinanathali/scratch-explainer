@@ -14,6 +14,8 @@
 // un customContextMenu temporaire sur chaque bloc au moment du clic droit.
 // ============================================================
 
+import { extractSnapshot, fetchProjectMeta } from "./snapshot";
+
 console.log("[ScratchExplainer] Extension chargée ✓");
 
 // ─── Types minimaux pour Blockly (scratch-blocks) ───────────
@@ -99,7 +101,17 @@ function waitForBlocksWrapper(): Promise<Element> {
 // scratch-blocks appelle customContextMenu(menuOptions) juste avant d'afficher,
 // ce qui nous permet d'ajouter notre item proprement.
 
+const PATCH_KEY = "__scratchExplainerPatched";
+
 function injectContextMenu(ScratchBlocks: ScratchBlocksLib): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((ScratchBlocks.BlockSvg.prototype as any)[PATCH_KEY]) {
+    console.log("[ScratchExplainer] Menu déjà injecté, rien à faire.");
+    return;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (ScratchBlocks.BlockSvg.prototype as any)[PATCH_KEY] = true;
+
   const original = ScratchBlocks.BlockSvg.prototype.showContextMenu_;
 
   ScratchBlocks.BlockSvg.prototype.showContextMenu_ = function (
@@ -142,18 +154,60 @@ function injectContextMenu(ScratchBlocks: ScratchBlocksLib): void {
 
 // ─── Étape 5 : callback quand l'utilisateur clique ───────────
 
-function onExplainClicked(rootBlock: BlockSvg): void {
-  // MILESTONE 2 : confirmation visuelle
-  // MILESTONE 3 : ici on appellera extractSnapshot() + explainScript()
-  console.log("[ScratchExplainer] Script sélectionné !");
-  console.log("  → Hat block type :", rootBlock.type);
-  console.log("  → Hat block id   :", rootBlock.id);
-  alert(`Script détecté : ${rootBlock.type}`);
+// Titres par défaut Scratch à ignorer (pas utiles pour le LLM)
+const DEFAULT_TITLE = /^Untitled(-\d+)?$/i;
+
+async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
+  console.log("[ScratchExplainer] Extraction du snapshot...");
+  try {
+    const { snapshot, spriteName, scriptId } = extractSnapshot(rootBlock.id);
+
+    // Récupérer l'ID du projet depuis l'URL (ex: /projects/1286581785/editor)
+    const projectId = window.location.pathname.match(/\/projects\/(\d+)/)?.[1];
+
+    let fullSnapshot = snapshot;
+    if (projectId) {
+      const meta = await fetchProjectMeta(projectId);
+      if (meta === null) {
+        console.log("[ScratchExplainer] Métadonnées non disponibles (projet privé ou erreur réseau)");
+      }
+      if (meta) {
+        const header: string[] = [];
+        if (meta.title && !DEFAULT_TITLE.test(meta.title)) {
+          header.push(`PROJECT: ${meta.title}`);
+        }
+        if (meta.instructions.trim()) {
+          header.push(`INSTRUCTIONS: ${meta.instructions.trim()}`);
+        }
+        if (meta.notes.trim()) {
+          header.push(`CREDITS: ${meta.notes.trim()}`);
+        }
+        if (header.length > 0) {
+          fullSnapshot = header.join("\n") + "\n\n" + snapshot;
+        }
+      }
+    }
+
+    console.log("[ScratchExplainer] Snapshot extrait ✓");
+    console.log("  → Sprite    :", spriteName);
+    console.log("  → Script ID :", scriptId);
+    console.log("  → Snapshot  :\n" + fullSnapshot);
+    // MILESTONE 4 : ici on enverra fullSnapshot au Worker Cloudflare
+    alert(`Snapshot extrait : ${scriptId}\nVois la console pour le détail.`);
+  } catch (err) {
+    console.error("[ScratchExplainer] Erreur snapshot :", err);
+    alert("Erreur lors de l'extraction. Vois la console.");
+  }
 }
 
 // ─── Point d'entrée ───────────────────────────────────────────
 
+function isEditorUrl(): boolean {
+  return /\/projects\/\d+\/editor/.test(window.location.pathname);
+}
+
 async function init(): Promise<void> {
+  if (!isEditorUrl()) return;
   try {
     await waitForBlocksWrapper();
     console.log("[ScratchExplainer] Éditeur détecté, recherche Blockly...");
@@ -169,4 +223,25 @@ async function init(): Promise<void> {
   }
 }
 
+// ─── Détection navigation SPA ─────────────────────────────────
+//
+// Scratch est une SPA (Single Page App) : naviguer entre /projects/ID
+// et /projects/ID/editor ne recharge PAS la page → le content script
+// ne se relance pas. On écoute history.pushState / replaceState pour
+// détecter ces changements et relancer init() si nécessaire.
+
+const _origPush = history.pushState.bind(history);
+const _origReplace = history.replaceState.bind(history);
+
+history.pushState = function (...args: Parameters<typeof history.pushState>) {
+  _origPush(...args);
+  init();
+};
+history.replaceState = function (...args: Parameters<typeof history.replaceState>) {
+  _origReplace(...args);
+  init();
+};
+window.addEventListener("popstate", () => init());
+
+// Lancement initial (si on arrive directement sur l'éditeur)
 init();
