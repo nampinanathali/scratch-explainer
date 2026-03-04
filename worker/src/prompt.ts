@@ -2,7 +2,7 @@
 // prompt.ts — System prompt + message utilisateur pour Claude
 // ============================================================
 
-import type { ExplainRequest } from "scratch-explainer-shared";
+import type { ExplainRequest, AdvancedExplanation } from "scratch-explainer-shared";
 
 /**
  * System prompt strict anti-hallucination.
@@ -56,6 +56,32 @@ SCRATCH ENGINE CONSTRAINTS TO APPLY WHEN RELEVANT:
 - Cloud vars: max 10/project, 10 writes/sec, 256 digits, floats/digit-strings only
 - Pen layer: 480x360, erase-all only, alpha limitations
 - Clones have no unique accessible ID; use variables/lists for identification
+`.trim();
+}
+
+/**
+ * Message de dérivation : génère le débutant depuis une analyse avancée déjà faite.
+ * Beaucoup plus court que buildUserMessage car le snapshot n'est pas renvoyé.
+ */
+export function buildDerivationMessage(request: ExplainRequest, advanced: AdvancedExplanation): string {
+  return `
+You already have an advanced technical analysis of a Scratch script.
+Derive the beginner explanation from it without access to the original code.
+
+TARGET SCRIPT:
+Sprite: ${request.script_target.sprite}
+Script ID: ${request.script_target.script_id}
+
+ADVANCED ANALYSIS (already computed):
+${JSON.stringify(advanced, null, 2)}
+
+---
+INSTRUCTIONS:
+- Generate: "beginner" (summary, walkthrough, vocabulary), "risks", "improvements", "unknowns".
+- Base everything strictly on the advanced analysis above. Do not invent anything.
+- The beginner explanation must use simple language for ages 7-13.
+- Language: write ALL text fields in the language with BCP 47 code "${request.language}".
+- Return ONLY the JSON object described in the system prompt.
 `.trim();
 }
 

@@ -18,6 +18,7 @@ export interface ExplainRequest {
   script_target: ScriptTarget;
   modes: ("beginner" | "advanced")[];   // un ou les deux
   language: string;                     // ex: "fr", "en"
+  source_advanced?: AdvancedExplanation; // si présent : dériver le débutant depuis l'avancé déjà calculé
 }
 
 // --------------------

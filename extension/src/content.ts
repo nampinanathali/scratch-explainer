@@ -17,7 +17,7 @@
 import { extractSnapshot, fetchProjectMeta } from "./snapshot";
 import { getCached, setCached } from "./cache";
 import type { Settings } from "./popup";
-import type { ExplainRequest, ExplainResponse, ErrorResponse } from "scratch-explainer-shared";
+import type { ExplainRequest, ExplainResponse, ErrorResponse, AdvancedExplanation } from "scratch-explainer-shared";
 import { renderPanel, showLoadingPanel, showErrorPanel } from "./ui";
 
 // Demande les réglages à bridge.ts via postMessage (bridge a accès à chrome.storage)
@@ -231,13 +231,23 @@ async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
       return;
     }
 
+    // Si on demande le mode débutant, vérifier si l'avancé est déjà en cache
+    // → dérivation avancé→débutant (moins de tokens que renvoyer tout le snapshot)
+    let sourceAdvanced: AdvancedExplanation | undefined;
+    if (!settings.mockMode && modes[0] === "beginner") {
+      const cachedAdv = await getCached(fullSnapshot, scriptId, ["advanced"], browserLang);
+      if (cachedAdv?.advanced) {
+        sourceAdvanced = cachedAdv.advanced;
+        console.log("[ScratchExplainer] Dérivation avancé→débutant ✓");
+      }
+    }
+
     // Si le snapshot dépasse 30 000 caractères, utiliser la version condensée
-    // pour les sprites non ciblés (économie de tokens)
+    // pour les sprites non ciblés (économie de tokens) — sauf si dérivation
     const CONDENSED_THRESHOLD = 30_000;
     let snapshotToSend = fullSnapshot;
-    if (fullSnapshot.length > CONDENSED_THRESHOLD) {
+    if (!sourceAdvanced && fullSnapshot.length > CONDENSED_THRESHOLD) {
       const { snapshot: condensed } = extractSnapshot(rootBlock.id, true);
-      // Réappliquer l'en-tête projet si présent
       const metaEnd = fullSnapshot.indexOf("\n\nSPRITES:");
       const metaHeader = metaEnd !== -1 ? fullSnapshot.slice(0, metaEnd) : "";
       snapshotToSend = metaHeader ? metaHeader + "\n\n" + condensed : condensed;
@@ -249,6 +259,7 @@ async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
       script_target: { sprite: spriteName, script_id: scriptId },
       modes,
       language: browserLang,
+      ...(sourceAdvanced ? { source_advanced: sourceAdvanced } : {}),
     };
 
     showLoadingPanel();
@@ -276,8 +287,10 @@ async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
     const explanation = json as ExplainResponse;
     console.log("[ScratchExplainer] Réponse reçue ✓", explanation);
 
-    // Sauvegarder dans le cache
-    await setCached(fullSnapshot, scriptId, modes, browserLang, explanation);
+    // Sauvegarder dans le cache (jamais pour le mode mock)
+    if (!settings.mockMode) {
+      await setCached(fullSnapshot, scriptId, modes, browserLang, explanation);
+    }
 
     renderPanel(explanation);
   } catch (err) {

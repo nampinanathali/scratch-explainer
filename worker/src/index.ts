@@ -4,7 +4,7 @@
 // Route unique : POST /explain
 // ============================================================
 
-import { buildSystemPrompt, buildUserMessage } from "./prompt";
+import { buildSystemPrompt, buildUserMessage, buildDerivationMessage } from "./prompt";
 import { validateResponse } from "./schema";
 import { checkRateLimit } from "./ratelimit";
 import type { ExplainRequest, ExplainResponse, ErrorResponse } from "scratch-explainer-shared";
@@ -108,13 +108,17 @@ export default {
     } else {
       const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
       try {
+        const userMessage = body.source_advanced
+          ? buildDerivationMessage(body, body.source_advanced)
+          : buildUserMessage(body);
+
         const completion = await client.chat.completions.create({
           model: "gpt-4.1",
           max_tokens: 4096,
           response_format: { type: "json_object" },
           messages: [
             { role: "system", content: buildSystemPrompt() },
-            { role: "user", content: buildUserMessage(body) },
+            { role: "user", content: userMessage },
           ],
         });
 

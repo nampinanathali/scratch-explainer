@@ -396,11 +396,24 @@ export function extractSnapshot(rootBlockId: string, condensedNonTarget = false)
           }
 
           lines.push("    BLOCKS:");
-          if (hat.next) {
-            lines.push(...serializeSequence(hat.next, allBlocks, 3));
-          } else {
-            lines.push("      (script vide)");
+          let hasContent = false;
+          // Contenu interne du bloc chapeau (ex: forever seul, repeat seul)
+          for (let j = 1; ; j++) {
+            const key = j === 1 ? "SUBSTACK" : `SUBSTACK${j}`;
+            const sub = hat.inputs[key];
+            if (!sub) break;
+            if (j === 2) lines.push("      [else]");
+            if (sub.block && allBlocks[sub.block]) {
+              hasContent = true;
+              lines.push(...serializeSequence(sub.block, allBlocks, 4));
+            }
           }
+          // Blocs qui suivent le chapeau
+          if (hat.next) {
+            hasContent = true;
+            lines.push(...serializeSequence(hat.next, allBlocks, 3));
+          }
+          if (!hasContent) lines.push("      (script vide)");
         }
       }
     }
