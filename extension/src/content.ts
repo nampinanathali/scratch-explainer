@@ -15,6 +15,7 @@
 // ============================================================
 
 import { extractSnapshot, fetchProjectMeta } from "./snapshot";
+import { getCached, setCached } from "./cache";
 import type { Settings } from "./popup";
 import type { ExplainRequest, ExplainResponse, ErrorResponse } from "scratch-explainer-shared";
 import { renderPanel, showLoadingPanel, showErrorPanel } from "./ui";
@@ -219,14 +220,34 @@ async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
       return;
     }
 
-    // Construire la requête à envoyer au worker
-    // Langue du navigateur (ex: "fr-FR" → "fr", "en-US" → "en", "de" → "de")
     const browserLang = navigator.language?.split("-")[0] ?? "fr";
+    const modes = settings.modes ?? ["beginner"];
+
+    // Vérifier le cache (clé basée sur le snapshot complet)
+    const cached = await getCached(fullSnapshot, scriptId, modes, browserLang);
+    if (cached) {
+      console.log("[ScratchExplainer] Réponse depuis le cache ✓");
+      renderPanel(cached);
+      return;
+    }
+
+    // Si le snapshot dépasse 30 000 caractères, utiliser la version condensée
+    // pour les sprites non ciblés (économie de tokens)
+    const CONDENSED_THRESHOLD = 30_000;
+    let snapshotToSend = fullSnapshot;
+    if (fullSnapshot.length > CONDENSED_THRESHOLD) {
+      const { snapshot: condensed } = extractSnapshot(rootBlock.id, true);
+      // Réappliquer l'en-tête projet si présent
+      const metaEnd = fullSnapshot.indexOf("\n\nSPRITES:");
+      const metaHeader = metaEnd !== -1 ? fullSnapshot.slice(0, metaEnd) : "";
+      snapshotToSend = metaHeader ? metaHeader + "\n\n" + condensed : condensed;
+      console.log(`[ScratchExplainer] Snapshot condensé : ${snapshotToSend.length} chars (vs ${fullSnapshot.length})`);
+    }
 
     const payload: ExplainRequest = {
-      project_snapshot: fullSnapshot,
+      project_snapshot: snapshotToSend,
       script_target: { sprite: spriteName, script_id: scriptId },
-      modes: settings.modes ?? ["beginner"],
+      modes,
       language: browserLang,
     };
 
@@ -254,6 +275,10 @@ async function onExplainClicked(rootBlock: BlockSvg): Promise<void> {
 
     const explanation = json as ExplainResponse;
     console.log("[ScratchExplainer] Réponse reçue ✓", explanation);
+
+    // Sauvegarder dans le cache
+    await setCached(fullSnapshot, scriptId, modes, browserLang, explanation);
+
     renderPanel(explanation);
   } catch (err) {
     console.error("[ScratchExplainer] Erreur snapshot :", err);

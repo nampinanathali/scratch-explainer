@@ -278,7 +278,7 @@ export interface SnapshotResult {
 
 // ─── Extraction principale ────────────────────────────────────
 
-export function extractSnapshot(rootBlockId: string): SnapshotResult {
+export function extractSnapshot(rootBlockId: string, condensedNonTarget = false): SnapshotResult {
   const vm = getScratchVM();
   if (!vm) {
     throw new Error(
@@ -363,31 +363,44 @@ export function extractSnapshot(rootBlockId: string): SnapshotResult {
     }
 
     const allBlocks = target.blocks._blocks;
+    const isTargetSprite = !!allBlocks[rootBlockId];
     const hatBlocks = Object.values(allBlocks).filter(
       (b) => b.topLevel && !b.shadow
     );
 
     if (hatBlocks.length) {
       lines.push("  SCRIPTS:");
-      for (const hat of hatBlocks) {
-        const sid = `${name}_${hat.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6)}`;
-        const isTarget = hat.id === rootBlockId;
-        lines.push(`  - SCRIPT_ID: ${sid}${isTarget ? " [TARGET]" : ""}`);
-        lines.push(`    EVENT: ${hat.opcode}`);
 
-        // Paramètre du chapeau (ex: "space" pour whenKeyPressed)
-        const hatFields = Object.values(hat.fields)
-          .map((f) => f.value)
-          .filter(Boolean);
-        if (hatFields.length) {
-          lines.push(`    EVENT_PARAM: ${hatFields.join(", ")}`);
+      if (condensedNonTarget && !isTargetSprite) {
+        // Sprite non ciblé + mode condensé : juste les événements déclencheurs
+        for (const hat of hatBlocks) {
+          const hatFields = Object.values(hat.fields)
+            .map((f) => f.value)
+            .filter(Boolean);
+          const eventParam = hatFields.length ? ` [${hatFields.join(", ")}]` : "";
+          lines.push(`    - ${hat.opcode}${eventParam}`);
         }
+      } else {
+        // Sprite ciblé ou mode complet : sérialisation complète
+        for (const hat of hatBlocks) {
+          const sid = `${name}_${hat.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6)}`;
+          const isTarget = hat.id === rootBlockId;
+          lines.push(`  - SCRIPT_ID: ${sid}${isTarget ? " [TARGET]" : ""}`);
+          lines.push(`    EVENT: ${hat.opcode}`);
 
-        lines.push("    BLOCKS:");
-        if (hat.next) {
-          lines.push(...serializeSequence(hat.next, allBlocks, 3));
-        } else {
-          lines.push("      (script vide)");
+          const hatFields = Object.values(hat.fields)
+            .map((f) => f.value)
+            .filter(Boolean);
+          if (hatFields.length) {
+            lines.push(`    EVENT_PARAM: ${hatFields.join(", ")}`);
+          }
+
+          lines.push("    BLOCKS:");
+          if (hat.next) {
+            lines.push(...serializeSequence(hat.next, allBlocks, 3));
+          } else {
+            lines.push("      (script vide)");
+          }
         }
       }
     }
