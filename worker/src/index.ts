@@ -146,6 +146,6 @@ function jsonError(code: ErrorResponse["error"], message: string, status: number
   const body: ErrorResponse = { error: code, message };
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
   });
 }
