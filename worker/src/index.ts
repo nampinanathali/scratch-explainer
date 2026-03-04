@@ -109,7 +109,7 @@ export default {
       const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
       try {
         const completion = await client.chat.completions.create({
-          model: "gpt-4o",
+          model: "gpt-4.1",
           max_tokens: 4096,
           response_format: { type: "json_object" },
           messages: [
