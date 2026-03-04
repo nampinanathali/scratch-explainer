@@ -28,8 +28,6 @@ jobs:
       - name: Build extension
         run: npm run build:extension
 
-      - name: Build worker
-        run: npm run build:worker
 
   deploy:
     name: Deploy Worker
