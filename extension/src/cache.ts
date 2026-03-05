@@ -14,8 +14,17 @@ interface CacheEntry {
   timestamp: number;
 }
 
+/**
+ * Supprime les valeurs des variables du snapshot avant de hasher.
+ * "score=10, health=3" → "score, health"
+ * Évite que le cache rate à cause des valeurs runtime qui changent au rechargement.
+ */
+function normalizeSnapshot(snapshot: string): string {
+  return snapshot.replace(/=[^,\n]*/g, "");
+}
+
 async function fingerprint(snapshot: string, scriptId: string, modes: string[], language: string): Promise<string> {
-  const text = [snapshot, scriptId, modes.join(","), language].join("|");
+  const text = [normalizeSnapshot(snapshot), scriptId, modes.join(","), language].join("|");
   const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buffer))
     .map((b) => b.toString(16).padStart(2, "0"))
